@@ -270,12 +270,13 @@ type SourceRootDirs struct {
 
 func (dirs *SourceRootDirs) Add(names ...string) {
 	dirs.dirs = append(dirs.dirs, names...)
+	// Initialize before parallel parsing; readers must not mutate this slice.
+	sort.SliceStable(dirs.dirs, func(i, j int) bool {
+		return len(strings.TrimPrefix(dirs.dirs[i], "-")) < len(strings.TrimPrefix(dirs.dirs[j], "-"))
+	})
 }
 
 func (dirs *SourceRootDirs) SourceRootDirAllowed(path string) (bool, string) {
-	sort.Slice(dirs.dirs, func(i, j int) bool {
-		return len(dirs.dirs[i]) < len(dirs.dirs[j])
-	})
 	last := len(dirs.dirs)
 	for i := range dirs.dirs {
 		// iterate from longest paths (most specific)

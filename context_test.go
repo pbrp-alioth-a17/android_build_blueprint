@@ -1661,3 +1661,24 @@ func Benchmark_parallelVisit(b *testing.B) {
 		b.Errorf("expected no errors, got %q", errs)
 	}
 }
+
+// Readers run concurrently during Blueprint parsing.
+func TestSourceRootDirAllowedConcurrent(t *testing.T) {
+	var dirs SourceRootDirs
+	dirs.Add("-external/tinyxml", "external/tinyxml2", "frameworks/base")
+	var workers sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for j := 0; j < 100; j++ {
+				allowed, prefix := dirs.SourceRootDirAllowed("external/tinyxml2/Android.bp")
+				if !allowed || prefix != "external/tinyxml2" {
+					t.Errorf("source selection = (%v, %q), want allowed tinyxml2", allowed, prefix)
+					return
+				}
+			}
+		}()
+	}
+	workers.Wait()
+}
